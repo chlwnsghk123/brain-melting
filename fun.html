@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제1회 뇌녹사 고인물 모의고사</title>
+    <style>
+        :root {
+            --primary-color: #FEE500; /* 카카오 옐로우 */
+            --bg-color: #bacee0; /* 카카오 배경색 */
+            --box-color: #ffffff;
+            --text-color: #333333;
+            --select-color: #4b89dc;
+        }
+
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--box-color);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+        }
+
+        h1 { font-size: 1.5rem; color: var(--text-color); margin-bottom: 10px; }
+        
+        .badge {
+            background-color: #ff4b4b; color: white; padding: 5px 10px;
+            border-radius: 15px; font-size: 0.8rem; font-weight: bold;
+            display: inline-block; margin-bottom: 20px;
+        }
+
+        /* 화면 전환용 */
+        #start-screen { display: block; }
+        #quiz-screen { display: none; }
+        #result-screen { display: none; }
+
+        .progress-bar {
+            width: 100%; height: 10px; background-color: #eee;
+            border-radius: 5px; margin-bottom: 20px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background-color: var(--primary-color);
+            width: 0%; transition: width 0.3s;
+        }
+
+        .question-text {
+            font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;
+            word-break: keep-all; line-height: 1.5;
+        }
+
+        /* 객관식 버튼 스타일 */
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        
+        .btn {
+            padding: 15px; border: 2px solid #eee; border-radius: 12px;
+            background: white; font-size: 1rem; cursor: pointer; transition: all 0.2s;
+            position: relative;
+        }
+        .btn:hover { background-color: #f9f9f9; border-color: #ddd; }
+        
+        .btn.selected-correct { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .btn.selected-wrong { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+
+        /* 랭킹 퀴즈(1번 문제) 전용 스타일 */
+        .ranking-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;
+        }
+        .rank-btn {
+            padding: 15px; border: 2px solid #ddd; border-radius: 10px;
+            background: white; font-weight: bold; cursor: pointer; position: relative;
+        }
+        .rank-btn.active { border-color: var(--select-color); background-color: #eaf4ff; color: var(--select-color); }
+        .rank-badge {
+            position: absolute; top: -8px; right: -8px;
+            background-color: var(--select-color); color: white;
+            width: 24px; height: 24px; border-radius: 50%;
+            font-size: 0.8rem; line-height: 24px; display: none;
+        }
+        .rank-btn.active .rank-badge { display: block; }
+        .reset-btn {
+            font-size: 0.9rem; padding: 8px 15px; margin-bottom: 15px;
+            background-color: #666; color: white; border: none; border-radius: 20px;
+        }
+
+        /* 공통 버튼 */
+        #next-btn, #start-btn, #restart-btn, #check-ranking-btn {
+            background-color: var(--primary-color); border: none;
+            font-weight: bold; margin-top: 20px; width: 100%; padding: 15px; border-radius: 12px; font-size: 1rem;
+            cursor: pointer;
+        }
+
+        #explanation {
+            margin-top: 20px; padding: 15px; background-color: #f1f3f5;
+            border-radius: 10px; text-align: left; font-size: 0.95rem;
+            display: none; line-height: 1.6;
+        }
+
+        /* 결과 화면 스타일 수정 */
+        .score-text { font-size: 2.5rem; font-weight: bold; margin: 20px 0; color: #333; }
+        .rank-text { font-size: 1.1rem; color: #666; margin-bottom: 30px; white-space: pre-line; }
+        
+        /* OMR 스타일 결과 그리드 */
+        .result-grid {
+            display: flex; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap;
+        }
+        .res-circle {
+            width: 35px; height: 35px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white; font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .res-circle.correct { background-color: #28a745; } /* 초록색 */
+        .res-circle.wrong { background-color: #dc3545; }   /* 빨간색 */
+        
+        .result-label { font-size: 0.9rem; color: #888; margin-bottom: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="start-screen">
+            <span class="badge">난이도: 최상 (HELL)</span>
+            <h1>제1회<br>뇌녹사 고인물 모의고사</h1>
+            <p>친구들의 말투, 흑역사, 습관을<br>얼마나 잘 알고 있나요?</p>
+            <br>
+            <button class="btn" id="start-btn" style="background-color: var(--primary-color);">시험 시작하기</button>
+        </div>
+
+        <div id="quiz-screen">
+            <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+            
+            <div id="question-container">
+                <div class="badge" id="q-category">영역</div>
+                <div class="question-text" id="q-text">문제 내용</div>
+                
+                <div id="ranking-container" style="display:none;">
+                    <button class="reset-btn" id="reset-ranking-btn">↻ 다시 선택하기</button>
+                    <div class="ranking-grid" id="ranking-grid"></div>
+                    <button class="btn" id="check-ranking-btn" style="display:none; background-color:#333; color:white;">정답 확인</button>
+                </div>
+
+                <div class="options" id="options-container"></div>
+            </div>
+
+            <div id="explanation">
+                <strong><span id="correct-answer-text"></span></strong><br>
+                <span id="explanation-text"></span>
+            </div>
+
+            <button class="btn" id="next-btn" style="display:none;">다음 문제 ➔</button>
+        </div>
+
+        <div id="result-screen">
+            <h1>채점 결과</h1>
+            
+            <div class="result-label">문항별 정오표</div>
+            <div class="result-grid" id="omr-grid"></div>
+
+            <div class="score-text" id="final-score">0점</div>
+            <div class="rank-text" id="final-msg">메시지</div>
+            
+            <button class="btn" id="restart-btn" style="background-color: var(--primary-color);">재도전하기</button>
+        </div>
+    </div>
+
+    <script>
+        // ★ 퀴즈 데이터
+        const quizData = [
+            {
+                category: "[제 1영역] 빅데이터 분석 (순위 맞추기)",
+                question: "이 단톡방에서 가장 많이 쓰인 단어 1위, 2위, 3위를 순서대로 선택하세요.",
+                type: "ranking",
+                candidates: ["ㅋㅋ", "ㅎㅇ", "사진", "시발", "존나", "배고파", "아니", "근데", "ㄹㅇ", "ㅠㅠ"],
+                correctOrder: ["ㅋㅋ", "ㅎㅇ", "사진"],
+                desc: "1위: ㅋㅋ (압도적)<br>2위: ㅎㅇ (매일 인사)<br>3위: 사진 (음식/엽사 공유)<br><br>'시발', '존나'는 4, 5위였습니다."
+            },
+            {
+                category: "[제 1영역] 빅데이터 분석",
+                question: "'지은'님이 'ㅋㅋ', 'ㅎㅇ'를 제외하고 가장 많이 사용한 단어는?",
+                type: "objective",
+                options: ["작업", "사당", "시발", "배고파", "집"],
+                answer: 2,
+                desc: "과제와 작업의 고통을 '시발'이라는 단어 하나로 승화시켰습니다."
+            },
+            {
+                category: "[제 1영역] 빅데이터 분석",
+                question: "'박잼민'님이 'ㅋㅋ', 'ㅎㅇ'를 제외하고 가장 많이 사용한 단어는?",
+                type: "objective",
+                options: ["대전", "롤체", "준화", "ㄹㅇ", "캬"],
+                answer: 4,
+                desc: "'캬', 'ㄹㅇㅋㅋ' 등 별다른 의미 없는 추임새를 넣는 횟수가 압도적으로 많았습니다."
+            },
+            {
+                category: "[제 1영역] 빅데이터 분석",
+                question: "'최준화'님이 'ㅋㅋ', 'ㅎㅇ'를 제외하고 가장 많이 사용한 단어는?",
+                type: "objective",
+                options: ["롤", "근데", "진짜", "재민아", "나"],
+                answer: 1,
+                desc: "문장을 시작할 때 습관적으로 '근데', '아니', '그'를 붙입니다."
+            },
+            {
+                category: "[제 2영역] 진위 판별 (Hell)",
+                question: "다음 중 '지은'님이 한 말이 *아닌* 것은?",
+                type: "objective",
+                options: ["내 롤체 판수 515판 돌파", "준화오빠 멋있다", "나는 거실 쇼파에서 자는걸 선호해", "나 오늘 탈코했는데 페미라고 소개좀", "사당데이 종료"],
+                answer: 0,
+                desc: "1번은 롤체에 미쳐있던 **최준화**의 발언입니다. (지은은 '준화오빠 멋있다'를 비꼬는 투로 말한 적이 있습니다)"
+            },
+            {
+                category: "[제 2영역] 진위 판별 (Hell)",
+                question: "다음 중 '박잼민'님이 한 말이 *아닌* 것은?",
+                type: "objective",
+                options: ["나는 아빠처럼 사는 게 목표야", "대섹준차뭉", "프레퍼스 범계점을 여는 게 내 목표야", "미지믄 사망 즌망", "우리 셋이서 시가바 가서 시가나 한대 태울까"],
+                answer: 2,
+                desc: "프레퍼스 창업 로드맵을 짠 건 **최준화**입니다. 나머지는 박잼민의 드립입니다."
+            },
+            {
+                category: "[제 2영역] 진위 판별 (Hell)",
+                question: "다음 중 '최준화'님이 한 말이 *아닌* 것은?",
+                type: "objective",
+                options: ["나 아오신 레벨 70이야", "니들이 못하는 레넥톤? 나는 할줄알아", "재민아 전화 한번만 걸어줘", "나 레오나, 레오나는 우리 곁에 있구나", "서브웨이 알바하고 왔다니까 아빠가 호적에서 파버린대"],
+                answer: 3,
+                desc: "4번은 새벽 감성에 취해 아무 말이나 치던 **지은**의 발언입니다."
+            },
+            {
+                category: "[제 2영역] 진위 판별 (Hell)",
+                question: "다음 중 이 톡방에서 일어난 *실제 사건이 아닌* 것은?",
+                type: "objective",
+                options: ["박잼민, ATM기가 15만원 먹음", "지은, 과제하다 말고 롤체 515판 자랑함", "최준화, 제주도 왕복 항공권 3만원에 끊음", "박잼민, 예비군 조기퇴소 후 낮술", "지은, 사당역 13번 출구 나치 경례 대기 명령"],
+                answer: 1,
+                desc: "롤체 판수 515판을 자랑한 건 최준화입니다. 지은은 과제 때문에 괴로워했을 뿐입니다."
+            },
+            {
+                category: "[제 2영역] 진위 판별 (Hell)",
+                question: "다음 중 '지은'의 발언으로 문맥상 가장 *이질적인(하지 않은)* 것은?",
+                type: "objective",
+                options: ["성심당 너 배민 열어", "준화가 집밥해주면 안됨? 거절시 준차뭉", "한화 이글스 우승 가자 제발", "야구팬들은 진짜 정병맥스다", "순종적인 일녀 찾아서 식모시키자"],
+                answer: 2,
+                desc: "지은은 롯데 자이언츠 팬입니다. 한화 때문에 고통받는 건 박잼민입니다."
+            },
+            {
+                category: "[제 2영역] 진위 판별 (최상)",
+                question: "'박잼민'이 최준화를 부를 때 사용한 호칭이 *아닌* 것은?",
+                type: "objective",
+                options: ["14q", "핑크퐁장인", "즌의선", "대섹준", "섭웨준"],
+                answer: 4,
+                desc: "박잼민은 '준차뭉' 관련 드립은 많이 쳤으나 '섭웨준'이라는 호칭은 쓴 적이 없습니다."
+            }
+        ];
+
+        let currentQIndex = 0;
+        let score = 0;
+        let userRankingSelection = [];
+        let resultHistory = []; // [true, false, true...] 저장용
+
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        document.getElementById('start-btn').addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            quizScreen.style.display = 'block';
+            loadQuestion();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            currentQIndex = 0;
+            score = 0;
+            userRankingSelection = [];
+            resultHistory = [];
+            resultScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            currentQIndex++;
+            if (currentQIndex < quizData.length) loadQuestion();
+            else showResult();
+        });
+
+        document.getElementById('reset-ranking-btn').addEventListener('click', () => {
+            userRankingSelection = [];
+            renderRankingButtons();
+        });
+
+        document.getElementById('check-ranking-btn').addEventListener('click', checkRankingAnswer);
+
+        function loadQuestion() {
+            const data = quizData[currentQIndex];
+            
+            document.getElementById('q-category').textContent = data.category;
+            document.getElementById('q-text').textContent = `Q${currentQIndex + 1}. ${data.question}`;
+            document.getElementById('explanation').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            
+            const progressPercent = ((currentQIndex) / quizData.length) * 100;
+            document.getElementById('progress').style.width = `${progressPercent}%`;
+
+            if (data.type === 'ranking') {
+                document.getElementById('options-container').style.display = 'none';
+                document.getElementById('ranking-container').style.display = 'block';
+                userRankingSelection = [];
+                renderRankingButtons();
+            } else {
+                document.getElementById('ranking-container').style.display = 'none';
+                document.getElementById('options-container').style.display = 'flex';
+                renderObjectiveButtons(data);
+            }
+        }
+
+        function renderRankingButtons() {
+            const container = document.getElementById('ranking-grid');
+            const data = quizData[currentQIndex];
+            container.innerHTML = '';
+            
+            const checkBtn = document.getElementById('check-ranking-btn');
+            if (userRankingSelection.length === 3) checkBtn.style.display = 'block';
+            else checkBtn.style.display = 'none';
+
+            data.candidates.forEach(word => {
+                const btn = document.createElement('div');
+                btn.className = 'rank-btn';
+                btn.textContent = word;
+                
+                const selectedIdx = userRankingSelection.indexOf(word);
+                if (selectedIdx !== -1) {
+                    btn.classList.add('active');
+                    const badge = document.createElement('div');
+                    badge.className = 'rank-badge';
+                    badge.textContent = (selectedIdx + 1);
+                    btn.appendChild(badge);
+                }
+
+                btn.onclick = () => {
+                    if (document.getElementById('next-btn').style.display === 'block') return;
+                    if (selectedIdx === -1) {
+                        if (userRankingSelection.length < 3) {
+                            userRankingSelection.push(word);
+                            renderRankingButtons();
+                        }
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderObjectiveButtons(data) {
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            data.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.textContent = opt;
+                btn.onclick = () => checkObjectiveAnswer(index, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkRankingAnswer() {
+            const data = quizData[currentQIndex];
+            const isCorrect = JSON.stringify(userRankingSelection) === JSON.stringify(data.correctOrder);
+            
+            // 결과 기록
+            resultHistory.push(isCorrect);
+            if (isCorrect) score += 10;
+
+            document.getElementById('check-ranking-btn').style.display = 'none';
+            
+            const explanationBox = document.getElementById('explanation');
+            explanationBox.style.display = 'block';
+            document.getElementById('next-btn').style.display = 'block';
+
+            let resultText = isCorrect ? "<span style='color:green'>정답입니다!</span>" : "<span style='color:red'>틀렸습니다.</span>";
+            document.getElementById('correct-answer-text').innerHTML = `${resultText} (정답: ${data.correctOrder.join(' > ')})`;
+            document.getElementById('explanation-text').innerHTML = data.desc;
+        }
+
+        function checkObjectiveAnswer(selectedIndex, btnElement) {
+            if (document.getElementById('next-btn').style.display === 'block') return;
+
+            const data = quizData[currentQIndex];
+            const isCorrect = selectedIndex === data.answer;
+
+            // 결과 기록
+            resultHistory.push(isCorrect);
+
+            if (isCorrect) {
+                btnElement.classList.add('selected-correct');
+                score += 10;
+            } else {
+                btnElement.classList.add('selected-wrong');
+                const buttons = document.querySelectorAll('#options-container .btn');
+                buttons[data.answer].classList.add('selected-correct');
+            }
+
+            const explanationBox = document.getElementById('explanation');
+            explanationBox.style.display = 'block';
+            document.getElementById('next-btn').style.display = 'block';
+
+            document.getElementById('correct-answer-text').textContent = isCorrect ? "정답!" : `정답: ${data.options[data.answer]}`;
+            document.getElementById('explanation-text').innerHTML = data.desc;
+        }
+
+        function showResult() {
+            quizScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+            
+            // 맞춘 개수 계산
+            const correctCount = resultHistory.filter(r => r).length;
+            
+            // 점수 및 개수 텍스트 표시
+            document.getElementById('final-score').innerHTML = `${correctCount}개 정답 <span style="font-size:1.2rem; color:#888;">(${score}점)</span>`;
+
+            // OMR 그리드 생성
+            const omrGrid = document.getElementById('omr-grid');
+            omrGrid.innerHTML = '';
+            resultHistory.forEach((res, idx) => {
+                const circle = document.createElement('div');
+                circle.className = res ? 'res-circle correct' : 'res-circle wrong';
+                circle.textContent = idx + 1;
+                omrGrid.appendChild(circle);
+            });
+            
+            let msg = "";
+            if (score === 100) msg = "🏆 명예의 전당 🏆\n당신은 이 단톡방의 망령입니다.\n소름돋네요.";
+            else if (score >= 70) msg = "👏 고인물 합격 👏\n친구들의 TMI를 꽤 많이 알고 계시네요.";
+            else if (score >= 40) msg = "🙂 일반인 레벨 🙂\n아직 수행이 부족합니다.";
+            else msg = "😨 누구세요? 😨\n친구들에게 관심을 좀 가져주세요.";
+
+            document.getElementById('final-msg').textContent = msg;
+        }
+    </script>
+</body>
+</html>
